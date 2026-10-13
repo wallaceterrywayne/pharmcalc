@@ -16,6 +16,9 @@
   const rnd = DEMO ? demoRand : Math.random;
   const today = () => (DEMO ? DEMO.day : Scheduler.dayKey());
   const topicMeta = (id) => meta.topics.find((t) => t.id === id);
+  // The student's topics in course order (topics.yaml), whatever order they were added in. Display
+  // only: state.topics keeps the order added, which the scheduler uses for new topics.
+  const deckInOrder = () => meta.topics.map((t) => t.id).filter((id) => state.topics.includes(id));
   const liveCards = (t) => topicMeta(t).cards.filter((c) => c.count > 0);
   const save = () => (DEMO ? true : Store.save(state));
 
@@ -173,7 +176,7 @@
 
   function focusCard() {
     const f = Scheduler.focusActive(state, today());
-    const live = state.topics.filter((t) => liveCards(t).length);
+    const live = deckInOrder().filter((t) => liveCards(t).length);
     if (f) {
       const until = state.focus.until;
       const left = Scheduler.daysBetween(today(), until) + 1;
@@ -211,7 +214,7 @@
     const done = items.filter((x) => x.done).length;
     const dailyDone = s.items.filter((x) => x.done).length;
     const allDone = items.length > 0 && done === items.length;
-    const rows = state.topics.map((t) => {
+    const rows = deckInOrder().map((t) => {
       const st = topicStatus(t);
       return `<tr><td>${esc(topicMeta(t).name)}<br><span class="muted small">${st.detail}</span></td><td>${st.badge}</td></tr>`;
     }).join("");
