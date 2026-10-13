@@ -2,7 +2,6 @@
 // Students pick topics; the scheduler works on each topic's hidden cards.
 
 (function () {
-  const REPORT_EMAIL = "";   // set to receive "Report a problem" emails
   const $app = document.getElementById("app");
   const esc = (s) => Render.esc(s);
   let state, cfg, meta, byId = {}, cardsOf = {};
@@ -78,7 +77,31 @@
     if (view === "setup") return renderSetup();
     if (view === "session") return renderSession();
     if (view === "progress") return renderProgress();
+    if (view === "welcome") return renderWelcome();
     return renderToday();
+  }
+
+  // First visit (and the About link): what the app is and how it works.
+  function renderWelcome() {
+    const first = state.topics.length === 0;
+    $app.innerHTML = header(first ? "" : '<button class="linkbtn" id="back">Back</button>') + `
+      <div class="card welcome"><h2>Welcome</h2>
+        <p>This is an app designed to help with common pharmaceutical calculations. It works by combining a
+        spaced repetition scheduler with a daily practice problem bank. You select the number of problems you
+        want to practice every day and the topics you want to review. If you're currently in a course, you can
+        always add new topics as they're introduced in the course.</p>
+        <p>The app will provide your daily problems selected from your list of topics. Problems you get correct
+        and rate as easy will appear rarely as a check-in for that skill. Problems you miss or rate as harder
+        will appear more often, so you can target your practice on the skills that really need it.</p>
+        <p>The purpose of this app isn't to replace homework or other dedicated study, but allow you to slowly
+        develop your skills over time with only a few minutes of practice daily, while ensuring your skills stay fresh.</p>
+        <p class="muted">No data is stored outside of this internet browser on this device. If you switch to a
+        different device or different browser, your personal schedule won't follow.</p>
+        ${first ? '<button class="btn" id="next">Pick my topics</button>' : ""}
+      </div>`;
+    const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
+    on("next", () => { view = "setup"; render(); });
+    on("back", () => { view = "today"; render(); });
   }
 
   const header = (right) => `<div class="app-head"><h1>Pharmacy calculations</h1><div class="row">${right || ""}</div></div>`;
@@ -102,7 +125,7 @@
       <ul class="topic-list">${c.topics.map((id) => topicItem(topicMeta(id))).join("")}</ul>`).join("");
     const opts = cfg.daily_options.map((n) =>
       `<option value="${n}" ${n === state.settings.daily ? "selected" : ""}>${n} problems</option>`).join("");
-    $app.innerHTML = header(first ? "" : '<button class="linkbtn" id="cancel">Cancel</button>') + storageNotice() + `
+    $app.innerHTML = header(first ? '<button class="linkbtn" id="toWelcome">Back</button>' : '<button class="linkbtn" id="cancel">Cancel</button>') + storageNotice() + `
       <div class="card">
         <h2>${first ? "Build your deck" : "Your deck"}</h2>
         <p class="muted">Check the topics you've covered in class. Add more any time, as your course gets to them;
@@ -122,6 +145,7 @@
         <div class="feedback" id="err"></div>
         <div class="tools"><button class="btn" id="saveDeck">${first ? "Start practicing" : "Save deck"}</button></div>
       </div>`;
+    if (document.getElementById("toWelcome")) document.getElementById("toWelcome").onclick = () => { view = "welcome"; render(); };
     document.getElementById("saveDeck").onclick = () => {
       const checked = [...$app.querySelectorAll(".topic-list input:checked")].map((x) => x.value);
       if (!checked.length) {
@@ -196,7 +220,7 @@
       main = `<p>None of the topics in your deck have problems yet. Add one that does, from <strong>Edit deck</strong>.</p>`;
     } else if (allDone) {
       main = `<div class="today-count">Done for today</div>
-        <p class="muted">${done} problem${done === 1 ? "" : "s"} today. Come back tomorrow: a little every day is what makes this stick.</p>
+        <p class="muted">${done} problem${done === 1 ? "" : "s"} today.</p>
         <div class="tools"><button class="btn ghost" id="extra">Extra practice (${state.settings.daily} more)</button></div>`;
     } else {
       const left = items.length - done;
@@ -206,13 +230,14 @@
         <div class="progress"><div style="width:${(100 * done) / items.length}%"></div></div>
         <button class="btn" id="go">${done ? "Continue" : "Start today's problems"}</button>`;
     }
-    $app.innerHTML = header(`<button class="linkbtn" id="edit">Edit deck</button><button class="linkbtn" id="prog">Progress</button>`)
+    $app.innerHTML = header(`<button class="linkbtn" id="edit">Edit deck</button><button class="linkbtn" id="prog">Progress</button>${DEMO ? "" : '<button class="linkbtn" id="about">About</button>'}`)
       + storageNotice() + `<div class="card">${main}</div>
       <div class="card"><h2>Your deck</h2><table class="status-table">${rows}</table>
       <p class="muted small">Each topic has a few kinds of problems ("skills"), introduced a few at a time.
       Skills you're learning come up most days; strong ones come back every week or two.</p></div>` + focusCard();
     document.getElementById("edit").onclick = () => { view = "setup"; render(); };
     document.getElementById("prog").onclick = () => { view = "progress"; render(); };
+    if (document.getElementById("about")) document.getElementById("about").onclick = () => { view = "welcome"; render(); };
     const on = (id, f) => { const e = document.getElementById(id); if (e) e.onclick = f; };
     on("go", () => { view = "session"; render(); });
     on("extra", () => { Scheduler.addExtra(state, cardPool(), cfg, today(), rnd); session(); save(); view = "session"; render(); });
@@ -235,15 +260,12 @@
     if (!p) { item.done = true; item.skipped = true; save(); return renderSession(); }
     const dailyN = session().items.length;
     const label = idx < dailyN ? `Problem ${idx + 1} of ${dailyN}` : `Extra practice ${idx - dailyN + 1}`;
-    const mail = `mailto:${REPORT_EMAIL}?subject=${encodeURIComponent("Problem report: " + p.id)}` +
-      `&body=${encodeURIComponent("Problem ID: " + p.id + "\nMy answer: \nWhat seems wrong: \n")}`;
     const shown = Date.now();
     const st = { checked: false, correct: false, viewedBefore: false, answer: null, ms: null };
 
     $app.innerHTML = header('<button class="linkbtn" id="home">Pause</button>') + `
       <div class="card" id="problem">
-        <div class="problem-meta"><span>${label} · ${esc(topicMeta(item.topic).name)}</span>
-          <span><span class="pid">${p.id}</span> · <a href="${mail}">Report a problem</a></span></div>
+        <div class="problem-meta"><span>${label}</span></div>
         <div class="stem">${esc(p.stem)}</div>
         <div class="answer-row">
           ${p.answer.choices ? p.answer.choices.map((c, i) => `<button class="btn ghost choice" data-choice="${i}">${esc(c)}</button>`).join("") : p.answer.unit === "1:x"
@@ -259,6 +281,7 @@
       <div class="card" id="solution"></div>`;
     const sol = document.getElementById("solution");
     Render.renderBlocks(p.solution, sol);
+    sol.insertAdjacentHTML("beforeend", `<p class="pid small">${esc(p.id)}</p>`);
     const input = document.getElementById("ans");
     const fb = document.getElementById("fb");
     const choice = !!p.answer.choices;
@@ -379,7 +402,7 @@
       if (!confirm("Erase your deck and all progress in this browser?")) return;
       Store.clear();
       state = Scheduler.newState(cfg);
-      view = "setup"; render();
+      view = "welcome"; render();
     };
   }
 
@@ -393,7 +416,7 @@
     if (state.settings.catchUp === undefined) state.settings.catchUp = cfg.catch_up_default;
     state.topics = state.topics.filter((t) => cardsOf[t]);   // drop topics removed from the content
     if (state.topics.length) Scheduler.setTopics(state, state.topics, cardsOf);   // picks up new cards from content updates
-    view = state.topics.length ? "today" : "setup";
+    view = state.topics.length ? "today" : "welcome";
     return loadDeckData();
   }).then(render).catch((e) => {
     $app.innerHTML = `<div class="card"><p class="danger">Something went wrong loading the practice problems.</p>
