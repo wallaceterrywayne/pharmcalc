@@ -284,7 +284,8 @@
       <div class="card" id="solution"></div>`;
     const sol = document.getElementById("solution");
     Render.renderBlocks(p.solution, sol);
-    sol.insertAdjacentHTML("beforeend", `<p class="pid small">${esc(p.id)}</p>`);
+    // The problem ID sits just after the solution card (shown with it), so the answer stays the card's last line.
+    sol.insertAdjacentHTML("afterend", `<p class="pid small sol-id">${esc(p.id)}</p>`);
     const input = document.getElementById("ans");
     const fb = document.getElementById("fb");
     const choice = !!p.answer.choices;
