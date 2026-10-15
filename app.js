@@ -279,7 +279,6 @@
         <div class="feedback" id="fb"></div>
         <div id="rating"></div>
         <div class="tools"><button class="btn ghost" id="toggle">Show worked solution</button></div>
-        <div id="vnote"></div>
       </div>
       <div class="card" id="solution"></div>`;
     const sol = document.getElementById("solution");
@@ -304,8 +303,6 @@
       e.target.textContent = open ? "Hide worked solution" : "Show worked solution";
       if (open && !st.checked && !st.viewedBefore) {
         st.viewedBefore = true;
-        document.getElementById("vnote").innerHTML = `<p class="viewed-note">Looking at the solution before answering is fine.
-          The app will count this one as "not yet" and bring this kind of problem back sooner.</p>`;
         finish("stuck");
       }
     };
